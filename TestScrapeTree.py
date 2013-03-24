@@ -25,24 +25,31 @@ class ScrapeRegexTestCase(TestCase):
 
     def setUp(self):
         self.node = ScrapeRegex('a(?P<number>[0-9]+)-(?P<word>[A-Z]+)z')
+        self.basic = ScrapeRegex('toto')
 
     def test_starts_with_this_line_ok(self):
         self.assertTrue(self.node.starts_with_this_line(
             'hello a12548-FOOz world'
         ))
+        self.assertTrue(self.basic.starts_with_this_line('AtotoB'))
 
     def test_starts_with_this_line_nok(self):
         self.assertFalse(self.node.starts_with_this_line(
             'hello a12548-F#Oz world'
         ))
+        self.assertFalse(self.basic.starts_with_this_line('AtotB'))
 
     def test_scrape_ok(self):
         doc = {}
+        self.assertTrue(self.basic.scrape('AtotoB', doc))
+        self.assertEqual({}, doc)
         self.assertTrue(self.node.scrape('hello a12548-FOOz world', doc))
         self.assertEqual({'number': '12548', 'word': 'FOO'}, doc)
 
     def test_scrape_nok(self):
         doc = {}
+        self.assertFalse(self.basic.scrape('AtotB', doc))
+        self.assertEqual({}, doc)
         self.assertFalse(self.node.scrape('hello a12548-F#Oz world', doc))
         self.assertEqual({}, doc)
 
