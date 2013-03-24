@@ -175,7 +175,7 @@ class ScrapeCollection(ScrapeAlternative):
         self.repeat_key = repeat_key
 
     def scrape(self, line, doc):
-        if self._get_context_name() not in doc:
+        if self._get_context_name() + '.d' not in doc:
             res = self._start_index(line)
             if res is None:
                 return False
