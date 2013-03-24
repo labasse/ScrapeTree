@@ -70,8 +70,8 @@ class ScrapeSequence(ScrapeContainer):
         super().__init__(nodes)
 
     def _start_index(self, line, doc=None):
-        if doc is not None and self._get_context_name()+'.i' in doc:
-            index = doc[self._get_context_name()+'.i']
+        if doc is not None and self._get_context_name() + '.i' in doc:
+            index = doc[self._get_context_name() + '.i']
         else:
             index = 0
         for i in range(index, len(self._nodes)):
@@ -82,14 +82,14 @@ class ScrapeSequence(ScrapeContainer):
                 break
 
     def _last_index(self, doc):
-        index = doc[self._get_context_name()]+1
+        index = doc[self._get_context_name()] + 1
         if index == len(self._nodes):
-            if self._get_context_name()+'.i' in doc:
-                del doc[self._get_context_name()+'.i']
+            if self._get_context_name() + '.i' in doc:
+                del doc[self._get_context_name() + '.i']
             return True
         else:
             del doc[self._get_context_name()]
-            doc[self._get_context_name()+'.i'] = index
+            doc[self._get_context_name() + '.i'] = index
             return False
 
     def _index2node(self, index):
@@ -97,7 +97,8 @@ class ScrapeSequence(ScrapeContainer):
 
 
 class ScrapeAlternative(ScrapeContainer):
-    """Scrape node branching on a scrape node or another according the first encontered"""
+    """ Scrape node branching on a scrape node or another
+        according the first encontered """
     def __init__(self, alternatives):
         super().__init__(alternatives)
 
@@ -154,10 +155,39 @@ class ScrapeKeyValueSequence(ScrapeSequence):
 
     def scrape(self, line, doc):
         if self._get_context_name() not in doc:
-            doc[self._get_context_name()] = {}
+            if self._start_index(line, doc) is None:
+                return False
+            else:
+                doc[self._get_context_name()] = {}
         if super().scrape(line, doc[self._get_context_name()]):
-            doc[doc[self._get_context_name()][self._keyname]] = doc[self._get_context_name()][self._valname]
+            doc[doc[self._get_context_name()][self._keyname]] = \
+                doc[self._get_context_name()][self._valname]
             del doc[self._get_context_name()]
             return True
         else:
             return False
+
+
+class ScrapeCollection(ScrapeAlternative):
+
+    def __init__(self, repeat_key, repeat_node, ending_node):
+        super().__init__([repeat_node, ending_node])
+        self.repeat_key = repeat_key
+
+    def scrape(self, line, doc):
+        if self._get_context_name() not in doc:
+            res = self._start_index(line)
+            if res is None:
+                return False
+            elif res == 0:
+                doc[self._get_context_name() + '.d'] = {}
+        repeating = (self._get_context_name() + '.d') in doc
+        subdoc = doc[self._get_context_name() + '.d'] if repeating else doc
+        if super().scrape(line, subdoc):
+            if self.repeat_key not in doc:
+                doc[self.repeat_key] = []
+            if not repeating:
+                return True
+            doc[self.repeat_key].append(doc[self._get_context_name() + '.d'])
+            del doc[self._get_context_name() + '.d']
+        return False

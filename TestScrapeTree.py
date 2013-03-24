@@ -1,5 +1,7 @@
 from unittest import TestCase
-from ScrapeTree import ScrapeNode, ScrapeSequence, ScrapeRegex, ScrapeAlternative, ScrapeMultiline, ScrapeKeyValueSequence
+from ScrapeTree import \
+    ScrapeNode, ScrapeSequence, ScrapeRegex, ScrapeCollection, \
+    ScrapeAlternative, ScrapeMultiline, ScrapeKeyValueSequence
 
 
 class ScrapeNodeMock(ScrapeNode):
@@ -25,10 +27,14 @@ class ScrapeRegexTestCase(TestCase):
         self.node = ScrapeRegex('a(?P<number>[0-9]+)-(?P<word>[A-Z]+)z')
 
     def test_starts_with_this_line_ok(self):
-        self.assertTrue(self.node.starts_with_this_line('hello a12548-FOOz world'))
+        self.assertTrue(self.node.starts_with_this_line(
+            'hello a12548-FOOz world'
+        ))
 
     def test_starts_with_this_line_nok(self):
-        self.assertFalse(self.node.starts_with_this_line('hello a12548-F#Oz world'))
+        self.assertFalse(self.node.starts_with_this_line(
+            'hello a12548-F#Oz world'
+        ))
 
     def test_scrape_ok(self):
         doc = {}
@@ -48,7 +54,12 @@ class ScrapeSequenceTestCase(TestCase):
         self.secnd = ScrapeNodeMock('val1', 'titi')
         self.third = ScrapeNodeMock('val2', 'tutu')
         self.fourth = ScrapeNodeMock('val3', 'tty')
-        self.node = ScrapeSequence([(self.first, True), (self.secnd, False), (self.third, True), (self.fourth, False)])
+        self.node = ScrapeSequence([
+            (self.first, True),
+            (self.secnd, False),
+            (self.third, True),
+            (self.fourth, False)
+        ])
 
     def test_starts_with_this_line_ok(self):
         self.assertTrue(self.node.starts_with_this_line('tata'))
@@ -64,8 +75,16 @@ class ScrapeSequenceTestCase(TestCase):
         self.assertFalse(self.node.scrape('tata', doc))
         self.assertFalse(self.node.scrape('titi', doc))
         self.assertFalse(self.node.scrape('tutu', doc))
-        self.assertTrue(self.node.scrape('tty', doc), 'doc : {0}'.format(doc.items()))
-        self.assertEqual({'val0': 'tata', 'val1': 'titi', 'val2': 'tutu', 'val3': 'tty'}, doc)
+        self.assertTrue(
+            self.node.scrape('tty', doc),
+            'doc : {0}'.format(doc.items())
+        )
+        self.assertEqual({
+            'val0': 'tata',
+            'val1': 'titi',
+            'val2': 'tutu',
+            'val3': 'tty'
+        }, doc)
 
         doc = {}
         self.assertFalse(self.node.scrape('tati', doc))
@@ -135,13 +154,13 @@ class ScrapeMultilineTestCase(TestCase):
     def test_scrape_ok(self):
         parts = [' And now,', ' something completly', ' different !']
         doc = {}
-        self.assertFalse(self.node.scrape('lkjqsf ABC'+parts[0], doc))
+        self.assertFalse(self.node.scrape('lkjqsf ABC' + parts[0], doc))
         self.assertFalse(self.node.scrape(parts[1], doc))
-        self.assertTrue(self.node.scrape(parts[2]+'DEF lkdqjsflq', doc))
+        self.assertTrue(self.node.scrape(parts[2] + 'DEF lkdqjsflq', doc))
         self.assertEqual({'key': parts}, doc)
 
         simple = 'que? what?'
-        self.assertTrue(self.node.scrape('ABC'+simple+'DEFfoo', doc))
+        self.assertTrue(self.node.scrape('ABC' + simple + 'DEFfoo', doc))
         self.assertEqual({'key': [simple]}, doc)
 
     def test_scrape_nok(self):
@@ -152,7 +171,10 @@ class ScrapeMultilineTestCase(TestCase):
 class ScrapeKeyValueSequenceTestCase(TestCase):
 
     def setUp(self):
-        self.node = ScrapeKeyValueSequence('k', 'v', [ScrapeNodeMock('k', 'a_key'), ScrapeNodeMock('v', 'a_value')])
+        self.node = ScrapeKeyValueSequence('k', 'v', [
+            ScrapeNodeMock('k', 'a_key'),
+            ScrapeNodeMock('v', 'a_value')
+        ])
 
     def test_starts_with_this_line_ok(self):
         self.assertTrue(self.node.starts_with_this_line('a_key'))
@@ -168,3 +190,47 @@ class ScrapeKeyValueSequenceTestCase(TestCase):
         self.assertFalse(self.node.scrape('foo', doc))
         self.assertTrue(self.node.scrape('a_value', doc))
         self.assertEqual({'a_key': 'a_value'}, doc)
+
+    def test_scrape_nok(self):
+        doc = {}
+        self.assertFalse(self.node.scrape('a_value', doc))
+        self.assertFalse(self.node.scrape('a_key', doc))
+
+
+class ScrapeCollectionTestCase(TestCase):
+
+    def setUp(self):
+        self.node = ScrapeCollection(
+            'a',
+            ScrapeNodeMock('val0', 'tata'),
+            ScrapeNodeMock('val1', 'titi')
+        )
+
+    def test_starts_with_this_line_ok(self):
+        self.assertTrue(self.node.starts_with_this_line('tata'))
+        self.assertTrue(self.node.starts_with_this_line('titi'))
+
+    def test_starts_with_this_line_nok(self):
+        self.assertFalse(self.node.starts_with_this_line('foo'))
+
+    def test_scrape_ok(self):
+        doc = {}
+        self.assertFalse(self.node.scrape('toto', doc))
+        self.assertTrue(self.node.scrape('titi', doc))
+        self.assertEqual({'a': [], 'val1': 'titi'}, doc)
+
+        doc = {}
+        self.assertFalse(self.node.scrape('tata', doc))
+        self.assertFalse(self.node.scrape('toto', doc))
+        self.assertFalse(self.node.scrape('tata', doc))
+        self.assertTrue(self.node.scrape('titi', doc))
+        self.assertEqual({
+            'a': [{'val0':'tata'}, {'val0':'tata'}],
+            'val1': 'titi'
+        }, doc)
+
+    def test_scrape_nok(self):
+        doc = {}
+        self.assertFalse(self.node.scrape('tita', doc))
+        self.assertFalse(self.node.scrape('tati', doc))
+        self.assertEqual({}, doc)
